@@ -1,0 +1,31 @@
+from telegram import Update
+from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+import sqlite3
+import os
+
+TOKEN = os.getenv("7984760860:AAEv37bHkFarpzw_ceJjKDIkILnIKN8bZ0I")  # נקרא מהסביבה
+
+conn = sqlite3.connect("files.db", check_same_thread=False)
+cursor = conn.cursor()
+
+async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.message.text.lower()
+
+    # החיפוש מחזיר עד 5 תוצאות
+    cursor.execute(
+        "SELECT name, file_id FROM files WHERE files MATCH ? LIMIT 5",
+        (query,)
+    )
+    results = cursor.fetchall()
+
+    if not results:
+        await update.message.reply_text("לא נמצאו תוצאות")
+        return
+
+    for name, file_id in results:
+        await update.message.reply_document(file_id)
+
+app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search))
+
+app.run_polling()

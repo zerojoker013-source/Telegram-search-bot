@@ -1,0 +1,42 @@
+from telethon import TelegramClient
+import sqlite3
+import os
+
+# קראי את המשתנים מסביבת הריצה
+api_id = int(os.getenv("30420089"))
+api_hash = os.getenv("2c2c383326d0b8d234ea8e6cb2cecdfa")
+
+channels = [
+    "https://t.me/+oRjw7G6dKk9jYzk8",
+    "https://t.me/+FcYMH_laS2c3NWQ0"
+]
+
+client = TelegramClient("session", api_id, api_hash)
+
+conn = sqlite3.connect("files.db")
+cursor = conn.cursor()
+
+# יצירת מסד נתונים עם חיפוש חכם
+cursor.execute("""
+CREATE VIRTUAL TABLE IF NOT EXISTS files
+USING fts5(name, file_id)
+""")
+
+async def main():
+    for channel in channels:
+        async for message in client.iter_messages(channel):
+            if message.document:
+                name = message.document.file_name
+                file_id = message.document.file_id
+                if name:
+                    cursor.execute(
+                        "INSERT INTO files (name, file_id) VALUES (?, ?)",
+                        (name.lower(), file_id)
+                    )
+                    print("Saved:", name)
+
+    conn.commit()
+    conn.close()
+
+with client:
+    client.loop.run_until_complete(main())
